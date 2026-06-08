@@ -1,4 +1,4 @@
-cvm-version: 0.8.1
+cvm-version: 0.10.4
 cpus: 128
 memory: 1048576
 gpus: 8
@@ -15,6 +15,10 @@ containers:
       - GITHUB_TOKEN
       - HF_TOKEN
       - TINFOIL_API_KEY
+
+networks:
+  web:
+    egress: open
 
 # The benchbox is accessed via debug-mode SSH, not over HTTPS. The shim block
 # is required by schema but never exercised — nothing is listening on port
