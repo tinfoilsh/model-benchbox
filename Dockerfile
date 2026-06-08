@@ -3,7 +3,7 @@
 # to ghcr.io/tinfoilsh/benchbox. The published digest is then pinned in
 # tinfoil-config.yml and deployed as a Tinfoil Container.
 
-ARG VLLM_VERSION=v0.20.2
+ARG VLLM_VERSION=v0.22.1
 FROM vllm/vllm-openai:${VLLM_VERSION}
 
 ENV DEBIAN_FRONTEND=noninteractive
