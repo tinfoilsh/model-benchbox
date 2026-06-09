@@ -25,13 +25,28 @@ tinfoil container create benchkimi-cc-on  --repo tinfoilsh/model-benchbox --tag 
 > overhead. Isolating the GPU-only contribution needs a third arm
 > (TDX-on + GPU-CC-off), not expressible via the product flag.
 
+**Accessing the tools.** Debug SSH lands in the CVM *guest*, not the container.
+The benchbox runs as a Docker container inside the guest, so step into it first:
+
+```bash
+ssh -A inf14.tinfoil.sh                       # agent-forward your org SSH key
+ssh -p <ssh-port> root@localhost              # into the CVM guest
+docker exec -it benchbox bash                 # into the benchbox container
+```
+
 Inside each enclave (one CVM holds all 8 GPUs, so run the arms sequentially):
 
 ```bash
 cd /workspace/bench
-./serve.sh                       # loads Kimi NVFP4 TP=8, waits for /health (minutes)
+./serve.sh                       # loads Kimi NVFP4 TP=8, waits for /health (~20 min)
 ./run_cc_experiment.sh cc-on     # or cc-off, matching how this CVM was deployed
 ```
+
+> **Image is pinned to vLLM 0.21.0.** 0.22.1 ships a broken `nvidia-cutlass-dsl`
+> that ICE-crashes CUDA-graph capture for every NVFP4 MoE kernel path, so it
+> cannot serve Kimi K2.6 NVFP4. 0.21.0 is the version production runs it on.
+> Scratch goes to `/dev/shm` (large via `ipc: host`); the container needs the
+> `web` egress network for FlashInfer to fetch NVFP4 cubins at serve time.
 
 Results land in `results/<cond>/<label>/` (raw guidellm + vllm-bench JSON, both
 `/metrics` snapshots, `nvidia-smi` incl. CC-mode confirmation, `manifest.json`).
