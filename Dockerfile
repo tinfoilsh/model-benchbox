@@ -3,7 +3,11 @@
 # to ghcr.io/tinfoilsh/benchbox. The published digest is then pinned in
 # tinfoil-config.yml and deployed as a Tinfoil Container.
 
-ARG VLLM_VERSION=v0.22.1
+# Pinned to v0.21.0 — the version the production confidential-kimi-k2-6-b200
+# config is proven on. vLLM 0.22.1's image ships a broken nvidia-cutlass-dsl
+# (mlir_global_dtors ICE) that crashes CUDA-graph capture for every NVFP4 MoE
+# kernel path, so it cannot serve Kimi K2.6 NVFP4. Match production exactly.
+ARG VLLM_VERSION=v0.21.0-ubuntu2404
 FROM vllm/vllm-openai:${VLLM_VERSION}
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -23,12 +27,12 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && apt-get update && apt-get install -y --no-install-recommends gh \
     && rm -rf /var/lib/apt/lists/*
 
-# Bench tooling. `vllm[bench]` enables the `vllm bench {latency,serve,throughput}`
-# subcommands. guidellm is the vllm-project successor to benchmark_serving.py
-# and the recommended tool for production benchmarking — live progress,
-# exportable reports, richer workload patterns.
+# Bench tooling. The base image already ships vLLM with the
+# `vllm bench {latency,serve,throughput}` subcommands, so we deliberately do NOT
+# reinstall `vllm[bench]` here — that would pull the latest vLLM and clobber the
+# pinned 0.21.0 base. We only add the client-side bench deps. guidellm is the
+# vllm-project successor to benchmark_serving.py and our primary instrument.
 RUN pip install --no-cache-dir \
-        "vllm[bench]" \
         guidellm \
         openai \
         httpx \

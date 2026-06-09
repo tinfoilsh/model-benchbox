@@ -21,10 +21,21 @@ containers:
     gpus: all
     ipc: host
     restart: always
+    # Attach the egress network so FlashInfer can fetch NVFP4 MoE cubins from
+    # edge.urm.nvidia.com at serve time (the container is otherwise only on the
+    # internal shim-net and has no egress).
+    networks: ["web"]
     secrets:
       - GITHUB_TOKEN
       - HF_TOKEN
       - TINFOIL_API_KEY
+    # The CVM rootfs is read-only; vLLM/torch/FlashInfer need writable scratch.
+    # (/dev/shm is large via ipc:host and used for caches; these cover the paths
+    # that aren't redirectable by env, mirroring the production Kimi config.)
+    tmpfs:
+      /tmp: size=16g,mode=1777,exec
+      /root: size=8g,mode=0700,exec
+      /usr/local/lib/python3.12/dist-packages/flashinfer_cubin/cubins: size=8g,mode=1777,exec
 
 networks:
   web:
