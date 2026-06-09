@@ -39,6 +39,11 @@ WORKDIR /workspace
 
 COPY CLAUDE.md /workspace/CLAUDE.md
 
+# CC-overhead benchmarking harness (serve a local engine + run guidellm/vllm
+# bench over localhost). Version-controlled here so every release ships an
+# auditable, attested copy of the exact experiment scripts.
+COPY bench /workspace/bench
+
 # Override the upstream OpenAI-server entrypoint so the container is a
 # long-lived bench shell. SSH in via debug-mode and run benches interactively.
 ENTRYPOINT []
