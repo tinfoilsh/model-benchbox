@@ -1,7 +1,7 @@
 cvm-version: 0.10.4
-cpus: 128
-memory: 1048576
-gpus: 8
+cpus: 32
+memory: 262144
+gpus: 1
 
 # Gemma-4-31B + its MTP assistant heads, for single-GPU serving probes
 # (phase-2 CC-overhead campaign). Both mpks are staged on inf14.
