@@ -1,0 +1,44 @@
+# extra_llm_api_options for Kimi-K2.6-NVFP4 on 8xB300 under confidential computing.
+# Adapted from TensorRT-LLM 1.3.0rc19 examples/configs/curated/kimi-k2-thinking.yaml,
+# CC-hardened and pinned to the K2.6 checkpoint's actual config (NO MTP).
+#
+# Passed via:  trtllm-serve <model> --config extra-llm-api.yaml
+# CLI flags (--tp_size/--ep_size/--kv_cache_dtype/--trust_remote_code) take
+# precedence over anything here.
+
+max_batch_size: 256          # >=128 so the frontier-sweep c128 point isn't cap-clipped
+                             # (the vLLM frontier arm used max-num-seqs 256; short/long never reach it)
+max_num_tokens: 8448
+max_seq_len: 8704            # >= long-arm prompt(8192) + output(512)
+
+tensor_parallel_size: 8
+moe_expert_parallel_size: 8
+enable_attention_dp: false   # vLLM B300 Kimi ran TP-attention (data_parallel_size=1), so
+                             # FALSE = apples-to-apples; ALSO avoids the DP-coordinator CC wedge
+                             # (vLLM's DP+EP path timed out at CUDA-graph capture under CC).
+
+trust_remote_code: true
+print_iter_log: true
+
+kv_cache_config:
+  free_gpu_memory_fraction: 0.75
+  dtype: fp8
+
+moe_config:
+  backend: CUTLASS           # EP-safe NVFP4 MoE path. Do NOT use cute_dsl/TRTLLMGen here:
+                             # they reject expert-parallel (rc19 errors -> "use CUTLASS for EP").
+
+allreduce_strategy: NCCL     # CC REQUIREMENT — custom/IPC/UB all-reduce uses CUDA P2P/IPC
+                             # which is unavailable under CC (the analog of vLLM's
+                             # --disable-custom-all-reduce). Set in BOTH arms => not a
+                             # between-arm confound.
+
+# NO speculative_config. The nvidia/Kimi-K2.6-NVFP4 checkpoint has
+# num_nextn_predict_layers=0 (no MTP/nextn weights) — copying the DeepSeek-R1 /
+# K2-Thinking MTP block (num_nextn_predict_layers: 3) would mis-load/error.
+
+cuda_graph_config:           # graph REPLAY carries no CC tax; graph CAPTURE under CC does
+                             # extra work and is the wedge risk. If CC-on capture hangs,
+                             # reduce this list or drop the block entirely (eager).
+  enable_padding: true
+  batch_sizes: [1, 2, 4, 8, 16, 32, 64, 128, 256]
