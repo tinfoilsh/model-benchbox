@@ -1,0 +1,36 @@
+# extra_llm_api_options for Gemma-4-31B-it (dense, bf16) single-GPU under CC.
+# Mirrors the vLLM Gemma arm (gemma-probe/gemma_serve.sh) so the only variable vs
+# the vLLM baseline is the serving engine:
+#   TP=1, bf16 weights, DEFAULT (bf16) KV, gpu-mem ~0.90, max-num-seqs 64,
+#   CUDA graphs on (FULL_AND_PIECEWISE in vLLM), nospec.
+#
+# Passed via:  trtllm-serve <model> --config extra-llm-api.yaml
+# CLI flags (--tp_size/--pp_size/--trust_remote_code) take precedence over this.
+
+max_batch_size: 128          # frontier sweep tops out at c128. NB: the original vLLM
+                             # Gemma arm used --max-num-seqs 64, so the c128 point needs a
+                             # matching vLLM re-run (max-num-seqs 128) to stay apples-to-apples;
+                             # c<=64 still diffs against the existing baseline.
+max_num_tokens: 8704         # >= long-arm prompt(8192)+headroom (chunked prefill)
+max_seq_len: 16384           # >= long-arm 8192+512 with headroom
+
+tensor_parallel_size: 1
+trust_remote_code: true
+print_iter_log: true
+
+kv_cache_config:
+  free_gpu_memory_fraction: 0.90   # ~ vLLM --gpu-memory-utilization 0.90.
+                                   # NOT an identical knob (frac of FREE-after-load vs
+                                   # frac of TOTAL), but KV is not the binding constraint
+                                   # here (max 64 seqs x <=8704 ctx << cache capacity).
+  # dtype: leave DEFAULT (bf16). The vLLM Gemma arm ran kv_cache_dtype=auto.
+  # Do NOT force fp8 here — that is the Kimi-NVFP4 arm's choice, not Gemma's.
+
+cuda_graph_config:           # graph REPLAY carries no CC tax; CAPTURE under CC is the
+                             # wedge risk. If CC-on capture hangs, shrink this / drop it (eager).
+  enable_padding: true
+  batch_sizes: [1, 2, 4, 8, 16, 32, 64, 128]
+
+# NO speculative_config  -> nospec, the clean single-GPU CC floor (per decision).
+# NO moe_config / expert-parallel -> Gemma-4-31B is DENSE (never hits the NVFP4 MoE path).
+# NO allreduce_strategy  -> TP=1, single GPU, no inter-GPU collectives.

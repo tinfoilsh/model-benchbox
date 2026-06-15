@@ -3,47 +3,56 @@ cpus: 32
 memory: 262144
 gpus: 1
 
-# Gemma-4-31B + its MTP assistant heads, for single-GPU serving probes
-# (phase-2 CC-overhead campaign). Both mpks are staged on inf14.
+# Gemma-4-31B (bf16, dense) for SINGLE-GPU TRT-LLM CC-overhead baselines — the
+# TRT-LLM counterpart to the vLLM Gemma single-GPU arm (mirror the vLLM CVM exactly:
+# 32 cpus / 1 GPU for BOTH cc-on and cc-off, so there is no host-CPU confound).
+# nospec, so the MTP assistant head is NOT needed/mounted.
+#
+# Deploy (one arm at a time — same box, sequential):
+#   cc-on:   tinfoil container create benchtrt-gemma-cc-on \
+#              --repo tinfoilsh/model-benchbox --tag <ver> --debug \
+#              --host control.inf8.tinfoil.sh --ssh-key <key> \
+#              --secret GITHUB_TOKEN --secret HF_TOKEN --secret TINFOIL_API_KEY
+#   cc-off:  same + --disable-cc-mode --yes        # NO separate tag — same config
+#   (inf8 = H200, inf14 = B300)
 models:
   - name: "gemma-4-31b"
     repo: "google/gemma-4-31B-it@fb9ae262347c3945692f09a612f8bb189def854f"
     mpk: "d2f38032f5faaa8a45b433157d0f25da1e533cf233784c7438fe9f46d1fbc3f4_62578688000_421c697b-8a62-59e2-9085-819a35012c0b"
-  - name: "gemma-4-31b-assistant"
-    repo: "google/gemma-4-31B-it-assistant@34ef9f029d1c52bccac2def222523af32f3ccd0f"
-    mpk: "2d92158d05e976de143bd05ff87977c73523ce6adeff1b559ebf32a2d230d634_971251712_27ee073f-136c-5855-a1a3-1fdc293ec0bb"
 
 containers:
   - name: "benchbox"
-    # Updated automatically by .github/workflows/tinfoil-build.yml on each release.
-    image: "ghcr.io/tinfoilsh/model-benchbox@sha256:9a44634e1ddead0ced0079e02f66fff4a96e5c4122fcc8bd8d537106771ed24d" # v0.0.8
+    # CREDS-FREE PATH: deploy the STOCK, PUBLICLY-PULLABLE TRT-LLM release image
+    # directly (no NGC login, no ghcr push, no custom build) and inject the
+    # bench/trtllm-gemma/ scripts at runtime over debug-SSH. release:1.3.0rc18 is
+    # the published tag and is CUDA-13.1-built -> attests under the enclave R595
+    # driver (a CUDA-13.3 image needs R610 and fails nvattest; see HANDOFF gotcha #12).
+    image: "nvcr.io/nvidia/tensorrt-llm/release:1.3.0rc18"
+    command: ["sleep", "infinity"]   # keep alive as a debug bench shell (boot honors `command`)
     runtime: nvidia
     gpus: all
-    ipc: host
+    ipc: host            # large writable /dev/shm for TRT-LLM/torch/FlashInfer scratch + caches
     restart: always
-    # Attach the egress network so FlashInfer can fetch NVFP4 MoE cubins from
-    # edge.urm.nvidia.com at serve time (the container is otherwise only on the
-    # internal shim-net and has no egress).
+    # TRT-LLM/FlashInfer may fetch cubins from edge.urm.nvidia.com at first serve —
+    # egress is gated by tinfoild's per-deploy firewall keyed to declared networks,
+    # so the container MUST be on "web".
     networks: ["web"]
     secrets:
       - GITHUB_TOKEN
       - HF_TOKEN
       - TINFOIL_API_KEY
-    # The CVM rootfs is read-only; vLLM/torch/FlashInfer need writable scratch.
-    # (/dev/shm is large via ipc:host and used for caches; these cover the paths
-    # that aren't redirectable by env, mirroring the production Kimi config.)
+    # CVM rootfs is read-only; serve.sh redirects TMPDIR/HF_HOME/caches to /dev/shm,
+    # but cover the paths that aren't env-redirectable.
     tmpfs:
       /tmp: size=16g,mode=1777,exec
       /root: size=8g,mode=0700,exec
-      /usr/local/lib/python3.12/dist-packages/flashinfer_cubin/cubins: size=8g,mode=1777,exec
 
 networks:
   web:
     egress: open
 
-# The benchbox is accessed via debug-mode SSH, not over HTTPS. The shim block
-# is required by schema but never exercised — nothing is listening on port
-# 8000 inside the container.
+# Accessed via debug-mode SSH, not HTTPS. shim block is schema-required but unused
+# (nothing listens on 8000 inside the container; serve.sh binds :8001).
 shim:
   upstream-port: 8000
   paths:
