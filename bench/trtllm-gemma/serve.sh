@@ -25,6 +25,7 @@ export XDG_CACHE_HOME=${XDG_CACHE_HOME:-/dev/shm/.cache}
 export TRITON_CACHE_DIR=${TRITON_CACHE_DIR:-/dev/shm/triton}
 export FLASHINFER_WORKSPACE_BASE=${FLASHINFER_WORKSPACE_BASE:-/dev/shm/fi}
 export PYTORCH_CUDA_ALLOC_CONF=${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}
+export TRTLLM_DISABLE_V2_HOST_KV_CACHE=${TRTLLM_DISABLE_V2_HOST_KV_CACHE:-1}
 mkdir -p "$HF_HOME" "$XDG_CACHE_HOME" "$TRITON_CACHE_DIR" "$FLASHINFER_WORKSPACE_BASE"
 
 if curl -sf "http://localhost:${PORT}/health" >/dev/null 2>&1; then
@@ -42,7 +43,7 @@ if [ "${SMOKE:-0}" = "1" ]; then
   echo "[serve] SMOKE: random weights (load_format: dummy)"
 fi
 
-echo "[serve] launching trtllm-serve $(python3 -c 'import tensorrt_llm; print(tensorrt_llm.__version__)' 2>/dev/null) (Gemma TP=1, bf16, default KV, nospec)…"
+echo "[serve] launching trtllm-serve $(python3 -c 'import tensorrt_llm; print(tensorrt_llm.__version__)' 2>/dev/null) (Gemma TP=1, bf16, default KV, nospec, disable_v2_host_kv=${TRTLLM_DISABLE_V2_HOST_KV_CACHE})…"
 nohup trtllm-serve "$MODEL" \
   --backend pytorch \
   --host 0.0.0.0 --port "$PORT" \
