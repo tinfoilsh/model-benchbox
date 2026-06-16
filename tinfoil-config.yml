@@ -16,7 +16,7 @@ models:
 containers:
   - name: "benchbox"
     # Updated automatically by .github/workflows/tinfoil-build.yml on each release.
-    image: "ghcr.io/tinfoilsh/model-benchbox@sha256:455a20126be1d6921ac2727c1819e328751023f2a82069832243a58356221837" # v0.0.13
+    image: "ghcr.io/tinfoilsh/model-benchbox@sha256:7dc417fbfe590ef0bb276c0e859cb57a92536056ae8dfea83a4df1b8d5d81afa" # v0.0.15
     runtime: nvidia
     gpus: all
     ipc: host
