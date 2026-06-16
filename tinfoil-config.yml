@@ -31,7 +31,7 @@ containers:
     # TRTLLM_DISABLE_V2_HOST_KV_CACHE=1 baked in and the Gemma bench harness
     # copied into /workspace/bench. The release workflow rewrites this tag to a
     # measured ghcr.io digest.
-    image: "ghcr.io/tinfoilsh/model-benchbox:trtllm-gemma-ccfix-dev"
+    image: "ghcr.io/tinfoilsh/model-benchbox@sha256:34b1c8e77d6e00d2b60a23e09c7a513eef59e89d351f0f79275aed5e5626b234" # v0.0.14
     command: ["sleep", "infinity"]   # keep alive as a debug bench shell (boot honors `command`)
     runtime: nvidia
     gpus: all
