@@ -1,24 +1,25 @@
 cvm-version: 0.10.4
-cpus: 32
-memory: 262144
-gpus: 1
+cpus: 128
+memory: 1048576
+gpus: 8
 
-# Gemma-4-31B (bf16, dense) for SINGLE-GPU TRT-LLM CC-overhead baselines on
-# inf14/B300. This is the TRT-LLM counterpart to the vLLM Gemma single-GPU arm.
-# Mirror the vLLM CVM exactly: 32 cpus / 1 GPU for BOTH cc-on and cc-off, so
-# there is no host-CPU confound. nospec, so the MTP assistant head is NOT
-# needed/mounted.
+# Gemma-4-31B (bf16, dense) for the TRT-LLM CC-OFF baseline on inf14/B300.
+# The workload remains single-GPU/TP=1; deploy with CUDA_VISIBLE_DEVICES=0 when
+# serving. This branch deliberately allocates an 8-GPU plaintext VM because
+# 1-GPU CC-off deploys repeatedly hit CUDA 802 ("system not yet initialized")
+# after the Blackwell CC-mode flip. This mirrors the existing vLLM Gemma B300
+# caveat: plaintext ran in an 8-GPU CVM while the workload used one GPU.
 #
 # This uses a patched TRT-LLM rc18 image because stock rc18 forces a v2 host
 # KV-cache tier for Gemma4 hybrid attention, and that host-memory CUDA path
 # fails under NVIDIA confidential computing.
 #
-# Deploy (one arm at a time — same box, sequential):
-#   cc-on:   tinfoil container create benchtrt-gemma-cc-on \
-#              --repo tinfoilsh/model-benchbox --tag <ver> --debug \
-#              --host control.inf14.tinfoil.sh --ssh-key <key> \
-#              --secret GITHUB_TOKEN --secret HF_TOKEN --secret TINFOIL_API_KEY
-#   cc-off:  same + --disable-cc-mode --yes        # NO separate tag — same config
+# Deploy:
+#   tinfoil container create benchtrt-gemma-cc-off \
+#     --repo tinfoilsh/model-benchbox --tag <ver> --debug \
+#     --host control.inf14.tinfoil.sh --ssh-key <key> \
+#     --secret GITHUB_TOKEN --secret HF_TOKEN --secret TINFOIL_API_KEY \
+#     --disable-cc-mode --yes
 #   (inf14 = B300)
 models:
   - name: "gemma-4-31b"
