@@ -56,8 +56,9 @@ nohup trtllm-serve "$MODEL" \
   --trust_remote_code \
   --config "$EFFECTIVE_YAML" \
   >"$LOG" 2>&1 &
+SERVE_PID=$!
 disown
-echo "[serve] pid $! -> $LOG; waiting for /health (timeout 40m)"
+echo "[serve] pid $SERVE_PID -> $LOG; waiting for /health (timeout 40m)"
 
 for i in $(seq 1 480); do          # 480 * 5s = 40 min
   if curl -sf "http://localhost:${PORT}/health" >/dev/null 2>&1; then
@@ -65,7 +66,7 @@ for i in $(seq 1 480); do          # 480 * 5s = 40 min
     echo "[serve] served model id(s):"; curl -s "http://localhost:${PORT}/v1/models" | jq -r '.data[].id' 2>/dev/null || true
     exit 0
   fi
-  if ! pgrep -f "trtllm-serve" >/dev/null; then
+  if ! kill -0 "$SERVE_PID" 2>/dev/null || ps -p "$SERVE_PID" -o stat= 2>/dev/null | grep -q 'Z'; then
     echo "[serve] ERROR: trtllm-serve exited early — last 50 log lines:"; tail -50 "$LOG"; exit 1
   fi
   sleep 5
