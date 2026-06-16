@@ -46,7 +46,7 @@ run() {  # in out conc nprompts label
   python3 -m tensorrt_llm.serve.scripts.benchmark_serving \
     --backend openai --base-url "$BASE" --model "$SERVED" \
     --tokenizer "$TOKENIZER" --trust-remote-code \
-    --dataset-name random --random-range-ratio 0.0 --ignore-eos \
+    --dataset-name random --random-range-ratio 0.0 --random-ids --ignore-eos \
     --random-input-len "$pin" --random-output-len "$pout" \
     --max-concurrency "$c" --num-prompts "$n" \
     --request-rate inf --burstiness 1.0 --seed "$SEED" \
