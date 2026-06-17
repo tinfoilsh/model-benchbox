@@ -23,9 +23,9 @@ LABEL=${3:-$(date -u +%Y%m%dT%H%M%SZ)}
 [ -n "$COND" ] && [ -n "$SCENARIO" ] || { usage; exit 2; }
 case "$COND" in cc-on|cc-off) ;; *) usage; exit 2 ;; esac
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CONFIG_DIR="$ROOT/configs"
-SCRIPTS_DIR="$ROOT/scripts"
+TRAIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_DIR="$TRAIN_ROOT/configs"
+SCRIPTS_DIR="$TRAIN_ROOT/scripts"
 NPROC_PER_NODE=${NPROC_PER_NODE:-8}
 PIN_MEMORY=${PIN_MEMORY:-true}
 WARMUP_STEPS=${WARMUP_STEPS:-10}
