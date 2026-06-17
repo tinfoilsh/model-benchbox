@@ -1,12 +1,7 @@
-# Tinfoil model-benchbox: a deployable container with vLLM benchmarking tools
-# baked in. Build context lives in this repo; tags with prefix `image-v*` push
-# to ghcr.io/tinfoilsh/benchbox. The published digest is then pinned in
-# tinfoil-config.yml and deployed as a Tinfoil Container.
-
-# Pinned to v0.21.0 — the version the production confidential-kimi-k2-6-b200
-# config is proven on. vLLM 0.22.1's image ships a broken nvidia-cutlass-dsl
-# (mlir_global_dtors ICE) that crashes CUDA-graph capture for every NVFP4 MoE
-# kernel path, so it cannot serve Kimi K2.6 NVFP4. Match production exactly.
+# Tinfoil model-benchbox: a deployable container with benchmarking tools baked
+# in. The base remains the proven vLLM image because the official NeMo AutoModel
+# container is too large for the GitHub Actions build runner; AutoModel is
+# installed below for Gemma post-training workloads.
 ARG VLLM_VERSION=v0.21.0-ubuntu2404
 FROM vllm/vllm-openai:${VLLM_VERSION}
 
@@ -16,7 +11,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git vim wget curl ca-certificates \
         openssh-client openssh-sftp-server \
-        jq unzip tmux htop \
+        jq unzip tmux htop numactl \
     && rm -rf /var/lib/apt/lists/*
 
 # GitHub CLI for clone/push from inside the enclave.
@@ -27,17 +22,18 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && apt-get update && apt-get install -y --no-install-recommends gh \
     && rm -rf /var/lib/apt/lists/*
 
-# Bench tooling. The base image already ships vLLM with the
-# `vllm bench {latency,serve,throughput}` subcommands, so we deliberately do NOT
-# reinstall `vllm[bench]` here — that would pull the latest vLLM and clobber the
-# pinned 0.21.0 base. We only add the client-side bench deps. guidellm is the
-# vllm-project successor to benchmark_serving.py and our primary instrument.
-RUN pip install --no-cache-dir \
-        guidellm \
-        openai \
-        httpx \
-        pandas \
-        datasets
+# Install AutoModel in the vLLM base instead of inheriting NVIDIA's full
+# AutoModel container. Keep examples in /opt/Automodel so the runner can use the
+# upstream VLM finetune entrypoint with a package version that matches it.
+# The vLLM base has a Debian-owned blinker package without pip RECORD metadata;
+# preinstall a pip-managed copy so Flask/mlflow dependency resolution can
+# upgrade/satisfy it without tripping over uninstall-no-record-file.
+RUN pip install --no-cache-dir --ignore-installed blinker
+
+RUN git clone --depth 1 https://github.com/NVIDIA-NeMo/Automodel.git /opt/Automodel \
+    && pip install --no-cache-dir \
+        "/opt/Automodel[cli,vlm]" \
+        liger-kernel
 
 WORKDIR /workspace
 
@@ -47,8 +43,9 @@ COPY CLAUDE.md /workspace/CLAUDE.md
 # bench over localhost). Version-controlled here so every release ships an
 # auditable, attested copy of the exact experiment scripts.
 COPY bench /workspace/bench
+COPY train /workspace/train
 
-# Override the upstream OpenAI-server entrypoint so the container is a
-# long-lived bench shell. SSH in via debug-mode and run benches interactively.
+# Override the upstream entrypoint so the container is a long-lived bench shell.
+# SSH in via debug-mode and run benches interactively.
 ENTRYPOINT []
 CMD ["sleep", "infinity"]

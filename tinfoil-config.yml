@@ -3,15 +3,15 @@ cpus: 128
 memory: 1048576
 gpus: 8
 
-# Kimi K2.6 (NVFP4) weights, provisioned into the benchbox CVM at
-# /tinfoil/mpk/mpk-<hash> so the kimi-probe harness (kimi_serve.sh) can run a
-# local in-process vLLM engine for multi-GPU (TP=8) CC-overhead benchmarking
-# over localhost. The wrapped .mpk must be pre-staged on the target host — it is
-# cached on inf8 (H200), so deploy with `--host control.inf8.tinfoil.sh`.
+# Gemma 4 31B weights, provisioned into the benchbox CVM at
+# /tinfoil/mpk/mpk-<hash> so the NeMo AutoModel training harness can fine-tune
+# from a local HF-compatible checkpoint instead of downloading the 31B model in
+# each arm. The wrapped .mpk must be pre-staged on the target host; this is the
+# same Gemma MPK used by confidential-gemma4-31b.
 models:
-  - name: "kimi-k2-6"
-    repo: "moonshotai/Kimi-K2.6@7eb5002f6aadc958aed6a9177b7ed26bb94011bb"
-    mpk: "baf763c7922bbafd337dc3aa86c9059f694169c51b1e0197d0d441aeea51186c_595205046272_7b0f3f16-bf8d-5206-8d14-088929943faf"
+  - name: "gemma-4-31b"
+    repo: "google/gemma-4-31B-it@fb9ae262347c3945692f09a612f8bb189def854f"
+    mpk: "d2f38032f5faaa8a45b433157d0f25da1e533cf233784c7438fe9f46d1fbc3f4_62578688000_421c697b-8a62-59e2-9085-819a35012c0b"
 
 containers:
   - name: "benchbox"
@@ -21,29 +21,25 @@ containers:
     gpus: all
     ipc: host
     restart: always
-    # Attach the egress network so FlashInfer can fetch NVFP4 MoE cubins from
-    # edge.urm.nvidia.com at serve time (the container is otherwise only on the
-    # internal shim-net and has no egress).
+    # Attach the egress network for HF dataset/model downloads and any NeMo
+    # runtime package metadata access.
     networks: ["web"]
     secrets:
       - GITHUB_TOKEN
       - HF_TOKEN
       - TINFOIL_API_KEY
-    # The CVM rootfs is read-only; vLLM/torch/FlashInfer need writable scratch.
-    # (/dev/shm is large via ipc:host and used for caches; these cover the paths
-    # that aren't redirectable by env, mirroring the production Kimi config.)
+    # The CVM rootfs is read-only; torch/NeMo/HF need writable scratch.
+    # /dev/shm is large via ipc:host and is used for caches/results.
     tmpfs:
       /tmp: size=16g,mode=1777,exec
-      /root: size=8g,mode=0700,exec
-      /usr/local/lib/python3.12/dist-packages/flashinfer_cubin/cubins: size=8g,mode=1777,exec
+      /root: size=16g,mode=0700,exec
 
 networks:
   web:
     egress: open
 
-# The benchbox is accessed via debug-mode SSH, not over HTTPS. The shim block
-# is required by schema but never exercised — nothing is listening on port
-# 8000 inside the container.
+# The benchbox is accessed via debug-mode SSH, not over HTTPS. The shim block is
+# required by schema but never exercised.
 shim:
   upstream-port: 8000
   paths:

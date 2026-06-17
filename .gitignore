@@ -2,3 +2,6 @@
 .env.local
 .DS_Store
 results/
+
+__pycache__/
+*.py[cod]
