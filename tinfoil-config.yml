@@ -3,15 +3,14 @@ cpus: 128
 memory: 1048576
 gpus: 8
 
-# Gemma 4 31B weights, provisioned into the benchbox CVM at
-# /tinfoil/mpk/mpk-<hash> so the NeMo AutoModel training harness can fine-tune
-# from a local HF-compatible checkpoint instead of downloading the 31B model in
-# each arm. The wrapped .mpk must be pre-staged on the target host; this is the
-# same Gemma MPK used by confidential-gemma4-31b.
+# Kimi K2.6 NVFP4 weights, provisioned into the benchbox CVM at
+# /tinfoil/mpk/mpk-<hash> so the NeMo AutoModel training harness can attempt
+# Kimi VLM LoRA fine-tuning from the local checkpoint instead of downloading
+# the 595 GB model in each arm. The wrapped .mpk is pre-staged on inf14.
 models:
-  - name: "gemma-4-31b"
-    repo: "google/gemma-4-31B-it@fb9ae262347c3945692f09a612f8bb189def854f"
-    mpk: "d2f38032f5faaa8a45b433157d0f25da1e533cf233784c7438fe9f46d1fbc3f4_62578688000_421c697b-8a62-59e2-9085-819a35012c0b"
+  - name: "kimi-k2-6"
+    repo: "nvidia/Kimi-K2.6-NVFP4@2fd3a800dedd098b8327eb49e93ebc75f85da19f"
+    mpk: "23653f0bad86c7ad6d4994a2607858662c56ed3ba205252f5714ba8636db35f8_595219173376_907a1c65-6c08-5c3c-9efa-e564282c7da0"
 
 containers:
   - name: "benchbox"

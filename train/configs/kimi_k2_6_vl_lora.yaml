@@ -1,0 +1,118 @@
+recipe: FinetuneRecipeForVLM
+
+step_scheduler:
+  global_batch_size: 8
+  local_batch_size: 1
+  max_steps: 120
+  ckpt_every_steps: 1000000
+  val_every_steps: 1000000
+  num_epochs: 1
+
+dist_env:
+  backend: nccl
+  timeout_minutes: 120
+
+rng:
+  _target_: nemo_automodel.components.training.rng.StatefulRNG
+  seed: 42
+  ranked: true
+
+distributed:
+  strategy: fsdp2
+  dp_size: none
+  tp_size: 1
+  cp_size: 1
+  pp_size: 1
+  ep_size: 8
+  sequence_parallel: false
+  activation_checkpointing: true
+  moe:
+    reshard_after_forward: false
+    wrap_outer_model: false
+
+model:
+  _target_: nemo_automodel.NeMoAutoModelForImageTextToText.from_pretrained
+  pretrained_model_name_or_path: nvidia/Kimi-K2.6-NVFP4
+  trust_remote_code: true
+  torch_dtype: torch.bfloat16
+  backend:
+    _target_: nemo_automodel.components.models.common.BackendConfig
+    attn: sdpa
+    linear: torch
+    rms_norm: torch_fp32
+    rope_fusion: false
+    experts: torch_mm
+    dispatcher: deepep
+    fake_balanced_gate: false
+    enable_hf_state_dict_adapter: true
+    enable_fsdp_optimizations: true
+
+processor:
+  _target_: transformers.AutoProcessor.from_pretrained
+  pretrained_model_name_or_path: nvidia/Kimi-K2.6-NVFP4
+  trust_remote_code: true
+
+peft:
+  _target_: nemo_automodel.components._peft.lora.PeftConfig
+  target_modules: ["*"]
+  exclude_modules:
+    - "*vision_tower*"
+    - "*multi_modal_projector*"
+    - "*mm_projector*"
+    - "*lm_head*"
+  dim: 8
+  alpha: 32
+  dropout: 0.0
+  moe_rank_scaling: true
+
+checkpoint:
+  enabled: false
+  checkpoint_dir: /dev/shm/checkpoints/kimi_k2_6_vl_lora
+  model_save_format: safetensors
+  save_consolidated: false
+
+loss_fn:
+  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
+  fp32_upcast: false
+
+dataset:
+  _target_: nemo_automodel.components.datasets.vlm.datasets.make_medpix_dataset
+  path_or_dataset: mmoukouba/MedPix-VQA
+  split: train[:1000]
+
+dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  num_workers: 0
+  pin_memory: true
+  collate_fn:
+    _target_: nemo_automodel.components.datasets.vlm.collate_fns.kimi_k25_vl_collate_fn
+    max_length: 1024
+  drop_last: true
+
+validation_dataset:
+  _target_: nemo_automodel.components.datasets.vlm.datasets.make_medpix_dataset
+  path_or_dataset: mmoukouba/MedPix-VQA
+  split: validation[:500]
+
+validation_dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  num_workers: 0
+  collate_fn:
+    _target_: nemo_automodel.components.datasets.vlm.collate_fns.kimi_k25_vl_collate_fn
+    max_length: 1024
+  drop_last: true
+
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 1.0e-5
+  weight_decay: 0.01
+  betas: [0.9, 0.95]
+
+lr_scheduler:
+  lr_decay_style: cosine
+
+freeze_config:
+  freeze_embeddings: true
+  freeze_vision_tower: true
+  freeze_audio_tower: true
+  freeze_language_model: false

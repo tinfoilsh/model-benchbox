@@ -1,10 +1,10 @@
-# Gemma 4 Training CC Benchmarks
+# Training CC Benchmarks
 
-This harness runs NeMo AutoModel Gemma 4 post-training workloads inside the
-benchbox CVM and writes results to `/dev/shm/results/train`. The image installs
+This harness runs NeMo AutoModel post-training workloads inside the benchbox CVM
+and writes results to `/dev/shm/results/train`. The image installs
 `nemo-automodel[cli,vlm]` on top of the repo's standard vLLM base image because
-the full NVIDIA NeMo AutoModel container is too large for the GitHub Actions
-build runner.
+the full NVIDIA NeMo AutoModel container is too large for the GitHub Actions build
+runner.
 
 Run the same release twice on `control.inf8.tinfoil.sh`:
 
@@ -58,3 +58,30 @@ Each scenario directory contains:
 - `train.log`
 - `summary.json`
 - `manifest.json`
+
+## Kimi K2.6 VLM LoRA
+
+The Kimi runner targets the inf14-staged `nvidia/Kimi-K2.6-NVFP4` MPK at:
+
+```text
+/tinfoil/mpk/mpk-23653f0bad86c7ad6d4994a2607858662c56ed3ba205252f5714ba8636db35f8
+```
+
+Run one smoke step sequence before committing to the longer arm:
+
+```bash
+cd /workspace
+KIMI26_SMOKE_STEPS=5 WARMUP_STEPS=1 train/run_kimi_training.sh cc-on kimi26-vl-lora-smoke run1
+KIMI26_LORA_STEPS=120 WARMUP_STEPS=20 train/run_kimi_training.sh cc-on kimi26-vl-lora run1
+```
+
+The Kimi script refuses to fall back to a Hugging Face download unless
+`ALLOW_HF_KIMI_DOWNLOAD=true` is set, because the checkpoint is too large for an
+accidental network pull. Useful tuning overrides:
+
+```bash
+KIMI26_MAX_LENGTH=512 KIMI26_LORA_STEPS=20 \
+  train/run_kimi_training.sh cc-on kimi26-vl-lora-smoke debug
+
+KIMI26_DISPATCHER=torch train/run_kimi_training.sh cc-on kimi26-vl-lora-smoke torch-dispatch
+```
