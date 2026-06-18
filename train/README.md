@@ -37,6 +37,29 @@ Scenarios:
 - `gemma31b-sft`: `google/gemma-4-31B-it`, full SFT with FSDP2 activation checkpointing,
   default 100 steps.
 
+## Llama 3.3 70B LoRA
+
+The Llama runner targets the inf14-staged `meta-llama/Llama-3.3-70B-Instruct`
+MPK at:
+
+```text
+/tinfoil/mpk/mpk-0cf252baf75fd3594a4c88a4cf76521e4b9d1b50fd72ca2dd2984e0738730726
+```
+
+The recipe follows NVIDIA AutoModel's single-node 8-GPU Llama 3.3 70B LoRA
+example: SQuAD instruction tuning, FSDP2, tensor parallel size 4, LoRA dim 8 /
+alpha 32. Run smoke first, then the 120-step PEFT arm:
+
+```bash
+cd /workspace
+LLAMA70B_SMOKE_STEPS=10 WARMUP_STEPS=1 train/run_llama_training.sh cc-on llama70b-lora-smoke run1
+LLAMA70B_LORA_STEPS=120 WARMUP_STEPS=20 train/run_llama_training.sh cc-on llama70b-lora run1
+```
+
+The script refuses to fall back to a Hugging Face model download unless
+`ALLOW_HF_LLAMA_DOWNLOAD=true` is set, because the checkpoint is too large for an
+accidental network pull.
+
 The 31B scenarios prefer the mounted MPK path
 `/tinfoil/mpk/mpk-d2f38032f5faaa8a45b433157d0f25da1e533cf233784c7438fe9f46d1fbc3f4`
 and fall back to Hugging Face if it is absent.
@@ -67,6 +90,11 @@ The Kimi runner targets the inf14-staged `nvidia/Kimi-K2.6-NVFP4` MPK at:
 /tinfoil/mpk/mpk-23653f0bad86c7ad6d4994a2607858662c56ed3ba205252f5714ba8636db35f8
 ```
 
+Status as of 2026-06-17: the real-weight AutoModel path is blocked before the first
+training step. AutoModel 0.5.0's Kimi K25 VL adapter expects expert
+`weight_packed` triplets, while the K2.6 ModelOpt NVFP4 checkpoint provides
+`weight` uint8 tensors plus FP8 scales. See `HANDOFF.md` §1l before rerunning.
+
 Run one smoke step sequence before committing to the longer arm:
 
 ```bash
@@ -83,5 +111,6 @@ accidental network pull. Useful tuning overrides:
 KIMI26_MAX_LENGTH=512 KIMI26_LORA_STEPS=20 \
   train/run_kimi_training.sh cc-on kimi26-vl-lora-smoke debug
 
-KIMI26_DISPATCHER=torch train/run_kimi_training.sh cc-on kimi26-vl-lora-smoke torch-dispatch
+KIMI26_GLOBAL_BATCH=4 KIMI26_LOCAL_BATCH=4 KIMI26_DISPATCHER=torch \
+  train/run_kimi_training.sh cc-on kimi26-vl-lora-smoke torch-dispatch
 ```

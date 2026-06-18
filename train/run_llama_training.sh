@@ -3,21 +3,16 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-usage: train/run_kimi_training.sh <cc-on|cc-off> <kimi26-vl-lora-smoke|kimi26-vl-lora> [label]
+usage: train/run_llama_training.sh <cc-on|cc-off> <llama70b-lora-smoke|llama70b-lora> [label]
 
 Environment overrides:
   NPROC_PER_NODE          torchrun worker count (default: 8)
-  KIMI26_SMOKE_STEPS     default 5
-  KIMI26_LORA_STEPS      default 120
-  KIMI26_MODEL           default: local inf14 MPK mount
-  ALLOW_HF_KIMI_DOWNLOAD set true to allow fallback to nvidia/Kimi-K2.6-NVFP4
-  KIMI26_GLOBAL_BATCH    default 4
-  KIMI26_LOCAL_BATCH     default 4
-  KIMI26_MAX_LENGTH      default 1024
-  KIMI26_EXPERTS         default torch_mm
-  KIMI26_DISPATCHER      default torch
-  PIN_MEMORY             dataloader pin_memory override, true/false (default: true)
-  WARMUP_STEPS           step records to discard in summary (default: 10)
+  LLAMA70B_SMOKE_STEPS    default 20
+  LLAMA70B_LORA_STEPS     default 120
+  LLAMA70B_MODEL          default: local inf14 MPK mount
+  ALLOW_HF_LLAMA_DOWNLOAD set true to allow fallback to meta-llama/Llama-3.3-70B-Instruct
+  PIN_MEMORY              dataloader pin_memory override, true/false (default: true)
+  WARMUP_STEPS            step records to discard in summary (default: 10)
 EOF
 }
 
@@ -33,33 +28,28 @@ SCRIPTS_DIR="$TRAIN_ROOT/scripts"
 NPROC_PER_NODE=${NPROC_PER_NODE:-8}
 PIN_MEMORY=${PIN_MEMORY:-true}
 WARMUP_STEPS=${WARMUP_STEPS:-10}
-KIMI26_GLOBAL_BATCH=${KIMI26_GLOBAL_BATCH:-4}
-KIMI26_LOCAL_BATCH=${KIMI26_LOCAL_BATCH:-4}
-KIMI26_MAX_LENGTH=${KIMI26_MAX_LENGTH:-1024}
-KIMI26_EXPERTS=${KIMI26_EXPERTS:-torch_mm}
-KIMI26_DISPATCHER=${KIMI26_DISPATCHER:-torch}
 
-LOCAL_KIMI="/tinfoil/mpk/mpk-23653f0bad86c7ad6d4994a2607858662c56ed3ba205252f5714ba8636db35f8"
-if [ -n "${KIMI26_MODEL:-}" ]; then
-  MODEL="$KIMI26_MODEL"
-elif [ -e "$LOCAL_KIMI" ]; then
-  MODEL="$LOCAL_KIMI"
-elif [ "${ALLOW_HF_KIMI_DOWNLOAD:-false}" = "true" ]; then
-  MODEL="nvidia/Kimi-K2.6-NVFP4"
+LOCAL_LLAMA="/tinfoil/mpk/mpk-0cf252baf75fd3594a4c88a4cf76521e4b9d1b50fd72ca2dd2984e0738730726"
+if [ -n "${LLAMA70B_MODEL:-}" ]; then
+  MODEL="$LLAMA70B_MODEL"
+elif [ -e "$LOCAL_LLAMA" ]; then
+  MODEL="$LOCAL_LLAMA"
+elif [ "${ALLOW_HF_LLAMA_DOWNLOAD:-false}" = "true" ]; then
+  MODEL="meta-llama/Llama-3.3-70B-Instruct"
 else
-  echo "[train] missing local Kimi MPK at $LOCAL_KIMI" >&2
-  echo "[train] set KIMI26_MODEL or ALLOW_HF_KIMI_DOWNLOAD=true to override" >&2
-  exit 1
+  echo "Local Llama 3.3 70B MPK not mounted at $LOCAL_LLAMA; refusing HF download." >&2
+  echo "Set LLAMA70B_MODEL or ALLOW_HF_LLAMA_DOWNLOAD=true to override." >&2
+  exit 3
 fi
 
 case "$SCENARIO" in
-  kimi26-vl-lora-smoke)
-    CONFIG="$CONFIG_DIR/kimi_k2_6_vl_lora.yaml"
-    STEPS=${KIMI26_SMOKE_STEPS:-5}
+  llama70b-lora-smoke)
+    CONFIG="$CONFIG_DIR/llama3_3_70b_lora.yaml"
+    STEPS=${LLAMA70B_SMOKE_STEPS:-20}
     ;;
-  kimi26-vl-lora)
-    CONFIG="$CONFIG_DIR/kimi_k2_6_vl_lora.yaml"
-    STEPS=${KIMI26_LORA_STEPS:-120}
+  llama70b-lora)
+    CONFIG="$CONFIG_DIR/llama3_3_70b_lora.yaml"
+    STEPS=${LLAMA70B_LORA_STEPS:-120}
     ;;
   *)
     usage; exit 2
@@ -81,9 +71,9 @@ OUT=${OUT:-/dev/shm/results/train/${COND}/${LABEL}/${SCENARIO}}
 mkdir -p "$OUT"
 
 AUTOMODEL_DIR=${AUTOMODEL_DIR:-/opt/Automodel}
-if [ ! -f "$AUTOMODEL_DIR/examples/vlm_finetune/finetune.py" ]; then
+if [ ! -f "$AUTOMODEL_DIR/examples/llm_finetune/finetune.py" ]; then
   AUTOMODEL_DIR=/dev/shm/Automodel
-  if [ ! -f "$AUTOMODEL_DIR/examples/vlm_finetune/finetune.py" ]; then
+  if [ ! -f "$AUTOMODEL_DIR/examples/llm_finetune/finetune.py" ]; then
     git clone --depth 1 https://github.com/NVIDIA-NeMo/Automodel.git "$AUTOMODEL_DIR"
   fi
 fi
@@ -104,11 +94,6 @@ cat > "$OUT/manifest.json" <<EOF
   "config": "$CONFIG",
   "steps": $STEPS,
   "nproc_per_node": $NPROC_PER_NODE,
-  "global_batch_size": $KIMI26_GLOBAL_BATCH,
-  "local_batch_size": $KIMI26_LOCAL_BATCH,
-  "max_length": $KIMI26_MAX_LENGTH,
-  "experts": "$KIMI26_EXPERTS",
-  "dispatcher": "$KIMI26_DISPATCHER",
   "pin_memory": "$PIN_MEMORY",
   "automodel_dir": "$AUTOMODEL_DIR",
   "output_dir": "$OUT",
@@ -118,8 +103,7 @@ EOF
 
 echo "[train] condition=$COND scenario=$SCENARIO label=$LABEL"
 echo "[train] model=$MODEL"
-echo "[train] steps=$STEPS nproc=$NPROC_PER_NODE global_batch=$KIMI26_GLOBAL_BATCH local_batch=$KIMI26_LOCAL_BATCH max_length=$KIMI26_MAX_LENGTH out=$OUT"
-echo "[train] backend experts=$KIMI26_EXPERTS dispatcher=$KIMI26_DISPATCHER"
+echo "[train] steps=$STEPS nproc=$NPROC_PER_NODE out=$OUT"
 
 "$SCRIPTS_DIR/collect_gpu_telemetry.sh" "$OUT/gpu-telemetry.csv" "${TELEMETRY_INTERVAL:-2}" &
 TELEM_PID=$!
@@ -131,23 +115,17 @@ trap cleanup EXIT
 START_EPOCH=$(date +%s)
 set +e
 torchrun --standalone --nproc-per-node="$NPROC_PER_NODE" \
-  "$AUTOMODEL_DIR/examples/vlm_finetune/finetune.py" \
+  "$AUTOMODEL_DIR/examples/llm_finetune/finetune.py" \
   -c "$CONFIG" \
   --model.pretrained_model_name_or_path "$MODEL" \
-  --processor.pretrained_model_name_or_path "$MODEL" \
-  --model.backend.experts "$KIMI26_EXPERTS" \
-  --model.backend.dispatcher "$KIMI26_DISPATCHER" \
   --step_scheduler.max_steps "$STEPS" \
-  --step_scheduler.global_batch_size "$KIMI26_GLOBAL_BATCH" \
-  --step_scheduler.local_batch_size "$KIMI26_LOCAL_BATCH" \
   --step_scheduler.num_epochs 1 \
   --step_scheduler.ckpt_every_steps 1000000 \
   --step_scheduler.val_every_steps 1000000 \
   --checkpoint.enabled false \
   --checkpoint.checkpoint_dir "/dev/shm/checkpoints/${COND}/${LABEL}/${SCENARIO}" \
   --dataloader.pin_memory "$PIN_MEMORY" \
-  --dataloader.collate_fn.max_length "$KIMI26_MAX_LENGTH" \
-  --validation_dataloader.collate_fn.max_length "$KIMI26_MAX_LENGTH" \
+  --validation_dataloader.pin_memory "$PIN_MEMORY" \
   2>&1 | tee "$OUT/train.log"
 RC=${PIPESTATUS[0]}
 set -e

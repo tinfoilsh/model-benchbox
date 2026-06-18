@@ -3,14 +3,14 @@ cpus: 128
 memory: 1048576
 gpus: 8
 
-# Kimi K2.6 NVFP4 weights, provisioned into the benchbox CVM at
-# /tinfoil/mpk/mpk-<hash> so the NeMo AutoModel training harness can attempt
-# Kimi VLM LoRA fine-tuning from the local checkpoint instead of downloading
-# the 595 GB model in each arm. The wrapped .mpk is pre-staged on inf14.
+# Llama 3.3 70B bf16 weights, provisioned into the benchbox CVM at
+# /tinfoil/mpk/mpk-<hash> so the NeMo AutoModel training harness can fine-tune
+# from the local checkpoint instead of downloading the 265 GiB model in each arm.
+# The wrapped .mpk is pre-staged on inf14.
 models:
-  - name: "kimi-k2-6"
-    repo: "nvidia/Kimi-K2.6-NVFP4@2fd3a800dedd098b8327eb49e93ebc75f85da19f"
-    mpk: "23653f0bad86c7ad6d4994a2607858662c56ed3ba205252f5714ba8636db35f8_595219173376_907a1c65-6c08-5c3c-9efa-e564282c7da0"
+  - name: "llama3-3-70b"
+    repo: "meta-llama/Llama-3.3-70B-Instruct@6f6073b423013f6a7d4d9f39144961bfbfbc386b"
+    mpk: "0cf252baf75fd3594a4c88a4cf76521e4b9d1b50fd72ca2dd2984e0738730726_282254876672_ac2a39df-75d0-575a-8e8a-fae8926214e1"
 
 containers:
   - name: "benchbox"
