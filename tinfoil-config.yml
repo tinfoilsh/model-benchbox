@@ -3,14 +3,13 @@ cpus: 128
 memory: 1048576
 gpus: 8
 
-# Kimi K2.6 NVFP4 weights, provisioned into the benchbox CVM at
-# /tinfoil/mpk/mpk-<hash> so the NeMo AutoModel training harness can attempt
-# Kimi VLM LoRA fine-tuning from the local checkpoint instead of downloading
-# the 595 GB model in each arm. The wrapped .mpk is pre-staged on inf14.
+# Qwen 3.5 397B-A17B FP8 weights, provisioned into the benchbox CVM at
+# /tinfoil/mpk/mpk-<hash> for the SGLang CC benchmark harness. The wrapped .mpk
+# is pre-staged on inf14.
 models:
-  - name: "kimi-k2-6"
-    repo: "nvidia/Kimi-K2.6-NVFP4@2fd3a800dedd098b8327eb49e93ebc75f85da19f"
-    mpk: "23653f0bad86c7ad6d4994a2607858662c56ed3ba205252f5714ba8636db35f8_595219173376_907a1c65-6c08-5c3c-9efa-e564282c7da0"
+  - name: "qwen3-5-397b-a17b"
+    repo: "Qwen/Qwen3.5-397B-A17B@8472618112abcbd45acbcdc58436aff4233c23f7"
+    mpk: "009e9a10b01acb7a61225cba9280d584b2f06d0fb35f1fe4a031c01143bb3a87_806819586048_f8c2f08a-ddde-56b5-946f-9f78fee99150"
 
 containers:
   - name: "benchbox"
