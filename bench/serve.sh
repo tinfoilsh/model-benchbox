@@ -12,7 +12,7 @@
 # until /health passes or a 35-minute timeout.
 set -euo pipefail
 
-MPK=${MPK:-/tinfoil/mpk/mpk-23653f0bad86c7ad6d4994a2607858662c56ed3ba205252f5714ba8636db35f8}
+MPK=${MPK:-/tinfoil/models/kimi-k2-6}
 PORT=${PORT:-8001}
 LOG=${LOG:-/dev/shm/serve.log}
 
