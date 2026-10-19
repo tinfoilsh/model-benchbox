@@ -41,7 +41,7 @@ RUN pip install --no-cache-dir \
 
 WORKDIR /workspace
 
-COPY CLAUDE.md /workspace/CLAUDE.md
+COPY AGENTS.md /workspace/AGENTS.md
 
 # CC-overhead benchmarking harness (serve a local engine + run guidellm/vllm
 # bench over localhost). Version-controlled here so every release ships an
