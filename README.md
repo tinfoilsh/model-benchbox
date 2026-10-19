@@ -19,7 +19,7 @@ vLLM benchmarking tools in a Tinfoil Container. Deploy in debug mode, SSH in, ru
 
 ## Run an experiment
 
-SSH lands in `/workspace`. Full workflow guidance is in [`CLAUDE.md`](./CLAUDE.md). Two starting points:
+SSH lands in `/workspace`. Full workflow guidance is in [`AGENTS.md`](./AGENTS.md). Two starting points:
 
 ```bash
 # Quick check — vllm's built-in
@@ -53,7 +53,7 @@ Edit anything (e.g. bump `ARG VLLM_VERSION` in `Dockerfile`), get it merged to `
 
 - [`Dockerfile`](./Dockerfile) — image contents (`vllm[bench]`, `guidellm`, dev tools)
 - [`tinfoil-config.yml`](./tinfoil-config.yml) — enclave resources (128 CPU / 1 TiB / 1 GPU, `cvm-version: 0.8.0`). Bump `gpus` to 8 for multi-GPU bench.
-- [`CLAUDE.md`](./CLAUDE.md) — bench workflow + metrics; baked into the image at `/workspace/CLAUDE.md`
+- [`AGENTS.md`](./AGENTS.md) — bench workflow + metrics; baked into the image at `/workspace/AGENTS.md`
 - [`release.sh`](./release.sh) — one-shot release script (build + measure + watch)
 - [`.github/workflows/`](./.github/workflows) — `tinfoil-build.yml` + `tinfoil-release.yml`
 

@@ -20,7 +20,7 @@ GPU is attached via NVIDIA confidential computing (`runtime: nvidia`, `gpus: all
 
 - `/workspace` — your working directory. Writable, but **non-persistent**: the enclave filesystem is a ramdisk, so anything written here is lost when the container restarts or redeploys. Save results out (scp, `gh release upload`, push to a git branch).
 - `/tinfoil` — host ramdisk mount (if exposed by the runtime). Same volatility caveat.
-- `/workspace/CLAUDE.md` — this file.
+- `/workspace/AGENTS.md` — this file.
 
 ## Secrets
 
