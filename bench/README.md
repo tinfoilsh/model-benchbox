@@ -13,7 +13,7 @@ script in each:
 ```bash
 # CC ON  (TDX + GPU CC/PPCIe)
 tinfoil container create benchkimi-cc-on  --repo tinfoilsh/model-benchbox --tag <tag> \
-  --debug --host control.inf14.tinfoil.sh --ssh-key <key> \
+  --debug --host <host> --ssh-key <key> \
   --secret GITHUB_TOKEN --secret HF_TOKEN --secret TINFOIL_API_KEY
 
 # CC OFF (plain VM + GPU CC off) — same line plus:
@@ -29,7 +29,7 @@ tinfoil container create benchkimi-cc-on  --repo tinfoilsh/model-benchbox --tag 
 The benchbox runs as a Docker container inside the guest, so step into it first:
 
 ```bash
-ssh -A inf14.tinfoil.sh                       # agent-forward your org SSH key
+ssh -A <host-machine>                         # agent-forward your org SSH key
 ssh -p <ssh-port> root@localhost              # into the CVM guest
 docker exec -it benchbox bash                 # into the benchbox container
 ```

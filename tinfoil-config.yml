@@ -6,8 +6,8 @@ gpus: 8
 # Kimi K2.6 (NVFP4) weights, provisioned into the benchbox CVM at
 # /tinfoil/mpk/mpk-<hash> so the kimi-probe harness (kimi_serve.sh) can run a
 # local in-process vLLM engine for multi-GPU (TP=8) CC-overhead benchmarking
-# over localhost. The wrapped .mpk must be pre-staged on the target host — it is
-# cached on inf8 (H200), so deploy with `--host control.inf8.tinfoil.sh`.
+# over localhost. The wrapped .mpk must be pre-staged on the target host, so
+# deploy with `--host` set to the H200 host that holds it (`tinfoil model list`).
 models:
   - name: "kimi-k2-6"
     repo: "moonshotai/Kimi-K2.6@7eb5002f6aadc958aed6a9177b7ed26bb94011bb"
