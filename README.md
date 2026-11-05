@@ -42,7 +42,7 @@ The enclave is a ramdisk — anything in `/workspace` is gone on restart. Before
 gh release create bench-<run-id> /workspace/results/<run-id>/*
 
 # Or scp from your laptop:
-scp -P <ssh-port> -r root@console.tinfoil.sh:/workspace/results/<run-id> ./
+scp -P <ssh-port> -r root@debug.tinfoil.sh:/workspace/results/<run-id> ./
 ```
 
 ## Subsequent releases
