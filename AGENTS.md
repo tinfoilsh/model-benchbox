@@ -116,7 +116,7 @@ cp -r /workspace/results/<run-id> .
 git checkout -b run/<run-id> && git add . && git commit -m "..." && git push
 
 # scp to your laptop (run from your laptop, not here)
-scp -P <ssh-port> -r root@console.tinfoil.sh:/workspace/results/<run-id> ./
+scp -P <ssh-port> -r root@debug.tinfoil.sh:/workspace/results/<run-id> ./
 
 # Upload as a GitHub release artifact
 gh release create bench-<run-id> /workspace/results/<run-id>/*
